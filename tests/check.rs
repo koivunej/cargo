@@ -424,3 +424,63 @@ fn check_all() {
         .with_stderr_contains("[..] --crate-name b b[/]src[/]main.rs [..]")
         );
 }
+
+// Tests that compilation errors in test code are detected with --tests
+// in plain #[test] functions
+#[test]
+fn check_tests_plain_test() {
+    if !is_nightly() {
+        return
+    }
+    let foo = project("foo")
+        .file("Cargo.toml", r#"
+            [package]
+            name = "foo"
+            version = "0.0.1"
+            authors = []
+        "#)
+        .file("src/main.rs", r#"
+            #![allow(dead_code)]
+
+            fn main () {}
+            fn bar(s: String) -> usize { s.len() }
+
+            #[test]
+            fn test() { assert_eq!(bar(42), 234); }
+        "#);
+
+    assert_that(foo.cargo_process("check").arg("--tests"), execs().with_status(101));
+}
+
+// Tests that compilation errors in test code are detected with --tests
+// in module with #[cfg(test)]
+#[test]
+fn check_tests_cfg_tests_mod() {
+    if !is_nightly() {
+        return
+    }
+    let foo = project("foo")
+        .file("Cargo.toml", r#"
+            [package]
+            name = "foo"
+            version = "0.0.1"
+            authors = []
+        "#)
+        .file("src/main.rs", r#"
+            #![allow(dead_code)]
+
+            fn main () {}
+            fn bar(s: String) -> usize { s.len() }
+
+            #[cfg(test)]
+            mod tests {
+                #[test]
+                fn testtest() {
+                    use bar;
+                    assert_eq!(bar(-1), 1);
+                }
+            }
+        "#);
+
+    assert_that(foo.cargo_process("check").arg("--tests"), execs().with_status(101));
+}

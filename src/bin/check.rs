@@ -21,6 +21,7 @@ Options:
     --example NAME               Check only the specified example
     --test NAME                  Check only the specified test target
     --bench NAME                 Check only the specified benchmark target
+    --tests                      Check tests
     --release                    Check artifacts in release mode, with optimizations
     --features FEATURES          Space-separated list of features to also check
     --all-features               Check all available features
@@ -63,6 +64,7 @@ pub struct Options {
     flag_example: Vec<String>,
     flag_test: Vec<String>,
     flag_bench: Vec<String>,
+    flag_tests: bool,
     flag_locked: bool,
     flag_frozen: bool,
     flag_all: bool,
@@ -87,6 +89,12 @@ pub fn execute(options: Options, config: &Config) -> CliResult {
         Packages::Packages(&options.flag_package)
     };
 
+    let rustc_args = if options.flag_tests {
+        Some(vec!["--test".to_string()])
+    } else {
+        None
+    };
+
     let opts = CompileOptions {
         config: config,
         jobs: options.flag_jobs,
@@ -104,7 +112,7 @@ pub fn execute(options: Options, config: &Config) -> CliResult {
                                         &options.flag_bench),
         message_format: options.flag_message_format,
         target_rustdoc_args: None,
-        target_rustc_args: None,
+        target_rustc_args: rustc_args.as_ref().map(|a| &a[..])
     };
 
     ops::compile(&ws, &opts)?;
